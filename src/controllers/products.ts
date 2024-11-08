@@ -1,18 +1,6 @@
+import { Request, Response } from "express";
 import CategoryModel from "../models/CategoriModel";
 import ProductModel from "../models/ProductModel";
-
-const getProducts = async (req: any, res: any) => {
-  try {
-    res.status(200).json({
-      data: [],
-      message: "Get products successfully!!!",
-    });
-  } catch (error: any) {
-    res.status(404).json({
-      message: error.message,
-    });
-  }
-};
 
 const addCategory = async (req: any, res: any) => {
   const body = req.body;
@@ -131,10 +119,51 @@ const updateCategory = async (req: any, res: any) => {
     });
   }
 };
+
+// Products
+
+const getProducts = async (req: any, res: any) => {
+  const { page, pageSize } = req.query;
+
+  try {
+    const skip = (Number(page) - 1) * Number(pageSize);
+    const products = await ProductModel.find({
+      isDeleted: false,
+    })
+      .skip(skip)
+      .limit(Number(pageSize));
+    res.status(200).json({
+      data: products,
+      message: "Get products successfully!!!",
+    });
+  } catch (error: any) {
+    res.status(404).json({
+      message: error.message,
+    });
+  }
+};
+const addProducts = async (req: any, res: any) => {
+  const body = req.body;
+  try {
+    const newProduct = new ProductModel(body);
+    await newProduct.save();
+
+    res.status(200).json({
+      data: newProduct,
+      message: "add products successfully!!!",
+    });
+  } catch (error: any) {
+    res.status(404).json({
+      message: error.message,
+    });
+  }
+};
+
 export {
   getProducts,
   addCategory,
   updateCategory,
   getCategories,
   deleteCategories,
+  addProducts,
 };
