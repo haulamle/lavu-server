@@ -14,11 +14,15 @@ const scheme = new Schema(
       default: 0,
       required: true,
     },
-    producId: {
+    productId: {
       type: String,
       required: true,
     },
     images: [String],
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
