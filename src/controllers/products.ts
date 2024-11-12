@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import CategoryModel from "../models/CategoriModel";
 import ProductModel from "../models/ProductModel";
+import SubProductModel from "../models/SubProductModel";
 
 const addCategory = async (req: any, res: any) => {
   const body = req.body;
@@ -39,6 +40,23 @@ const getCategories = async (req: any, res: any) => {
       .limit(Number(pageSize));
     res.status(200).json({
       data: categories,
+      message: "add category successfully!!!",
+    });
+  } catch (error: any) {
+    res.status(404).json({
+      message: error.message,
+    });
+  }
+};
+
+const getCategoryDetail = async (req: any, res: any) => {
+  const { id } = req.query;
+
+  try {
+    const item = await CategoryModel.findById(id);
+
+    res.status(200).json({
+      data: item,
       message: "add category successfully!!!",
     });
   } catch (error: any) {
@@ -159,6 +177,23 @@ const addProducts = async (req: any, res: any) => {
   }
 };
 
+const addSubProduct = async (req: any, res: any) => {
+  const body = req.body;
+  try {
+    const subProducts = new SubProductModel(body);
+    await subProducts.save();
+
+    res.status(200).json({
+      data: subProducts,
+      message: "add subProducts successfully!!!",
+    });
+  } catch (error: any) {
+    res.status(404).json({
+      message: error.message,
+    });
+  }
+};
+
 export {
   getProducts,
   addCategory,
@@ -166,4 +201,6 @@ export {
   getCategories,
   deleteCategories,
   addProducts,
+  getCategoryDetail,
+  addSubProduct,
 };
