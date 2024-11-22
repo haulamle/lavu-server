@@ -6,13 +6,15 @@ const scheme = new Schema(
     color: String,
     price: {
       type: Number,
-      default: 0,
       required: true,
     },
-    quantity: {
+    qty: {
       type: Number,
       default: 0,
       required: true,
+    },
+    discount: {
+      type: Number,
     },
     productId: {
       type: String,

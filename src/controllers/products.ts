@@ -181,6 +181,22 @@ const getProducts = async (req: any, res: any) => {
     });
   }
 };
+const getProductDetail = async (req: any, res: any) => {
+  const { id } = req.query;
+  try {
+    const item = await ProductModel.findById(id);
+
+    res.status(200).json({
+      data: item,
+      message: " successfully!!!",
+    });
+  } catch (error: any) {
+    res.status(404).json({
+      message: error.message,
+    });
+  }
+};
+
 const addProducts = async (req: any, res: any) => {
   const body = req.body;
   try {
@@ -190,6 +206,25 @@ const addProducts = async (req: any, res: any) => {
     res.status(200).json({
       data: newProduct,
       message: "add products successfully!!!",
+    });
+  } catch (error: any) {
+    res.status(404).json({
+      message: error.message,
+    });
+  }
+};
+
+const updateProduct = async (req: any, res: any) => {
+  const { id } = req.query;
+  const body = req.body;
+
+  try {
+    await ProductModel.findByIdAndUpdate(id, body);
+    const product = await ProductModel.findById(id);
+
+    res.status(200).json({
+      data: product,
+      message: "Update product successfully!!!",
     });
   } catch (error: any) {
     res.status(404).json({
@@ -250,4 +285,6 @@ export {
   getCategoryDetail,
   addSubProduct,
   removeProduct,
+  getProductDetail,
+  updateProduct,
 };
