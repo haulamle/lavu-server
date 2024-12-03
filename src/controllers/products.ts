@@ -2,6 +2,12 @@ import { Request, Response } from "express";
 import CategoryModel from "../models/CategoriModel";
 import ProductModel from "../models/ProductModel";
 import SubProductModel from "../models/SubProductModel";
+import { AnyAaaaRecord } from "dns";
+
+interface SelectModel {
+  label: string;
+  value: string;
+}
 
 const addCategory = async (req: any, res: any) => {
   const body = req.body;
@@ -141,13 +147,19 @@ const updateCategory = async (req: any, res: any) => {
 // Products
 
 const getProducts = async (req: any, res: any) => {
-  const { page, pageSize } = req.query;
+  const { page, pageSize, title } = req.query;
+
+  await checkDeletedProduct();
+
+  const filter: any = {};
+  filter.isDeleted = false;
+  if (title) {
+    filter.slug = { $regex: title };
+  }
 
   try {
     const skip = (Number(page) - 1) * Number(pageSize);
-    const products = await ProductModel.find({
-      isDeleted: false,
-    })
+    const products = await ProductModel.find(filter)
       .skip(skip)
       .limit(Number(pageSize));
 
@@ -157,6 +169,7 @@ const getProducts = async (req: any, res: any) => {
       products.forEach(async (item: any) => {
         const children = await SubProductModel.find({
           productId: item._id,
+          isDeleted: false,
         });
         items.push({
           ...item._doc,
@@ -165,7 +178,12 @@ const getProducts = async (req: any, res: any) => {
 
         items.length === products.length &&
           res.status(200).json({
-            data: items,
+            data: {
+              items,
+              totalItems: await ProductModel.find({
+                isDeleted: false,
+              }).countDocuments(),
+            },
             message: "Get products successfully!!!",
           });
       });
@@ -181,13 +199,24 @@ const getProducts = async (req: any, res: any) => {
     });
   }
 };
+
+const checkDeletedProduct = async () => {
+  console.log("get and check deleted product about 30 days from now");
+};
 const getProductDetail = async (req: any, res: any) => {
   const { id } = req.query;
   try {
     const item = await ProductModel.findById(id);
+    const subProducts = await SubProductModel.find({
+      productId: id,
+      isDeleted: false,
+    });
 
     res.status(200).json({
-      data: item,
+      data: {
+        product: item,
+        subProducts,
+      },
       message: " successfully!!!",
     });
   } catch (error: any) {
@@ -249,6 +278,40 @@ const addSubProduct = async (req: any, res: any) => {
     });
   }
 };
+const updateSubProduct = async (req: any, res: any) => {
+  const { id } = req.query;
+  const body = req.body;
+  try {
+    await SubProductModel.findByIdAndUpdate(id, body);
+
+    res.status(200).json({
+      message: "Updated!!!",
+    });
+  } catch (error: any) {
+    res.status(404).json({
+      message: error.message,
+    });
+  }
+};
+
+const removeSubProduct = async (req: any, res: any) => {
+  const { id, isSoftDelete } = req.query;
+  try {
+    if (isSoftDelete) {
+      await SubProductModel.findByIdAndUpdate(id, { isDeleted: true });
+    } else {
+      await SubProductModel.findByIdAndDelete(id);
+    }
+    res.status(200).json({
+      data: [],
+      message: "remove subProducts successfully!!!",
+    });
+  } catch (error: any) {
+    res.status(404).json({
+      message: error.message,
+    });
+  }
+};
 
 const handleRemoveSubProduct = async (items: any[]) => {
   items.forEach(async (item: any) => {
@@ -275,6 +338,107 @@ const removeProduct = async (req: any, res: any) => {
   }
 };
 
+const getFilterValues = async (req: any, res: any) => {
+  try {
+    const datas = await SubProductModel.find();
+
+    const colors: string[] = [];
+    const sizes: SelectModel[] = [];
+    const prices: number[] = [];
+
+    if (datas.length > 0) {
+      datas.forEach((item) => {
+        item.color && !colors.includes(item.color) && colors.push(item.color);
+        item.size && sizes.push({ label: item.size, value: item.size });
+        prices.push(item.price);
+      });
+    }
+
+    res.status(200).json({
+      data: {
+        colors,
+        sizes,
+        prices,
+      },
+      message: "successfully!!!",
+    });
+  } catch (error: any) {
+    res.status(404).json({
+      message: error.message,
+    });
+  }
+};
+const filterProducts = async (req: any, res: any) => {
+  const body = req.body;
+
+  const { colors, size, price, categories } = body;
+  let filter: any = {};
+
+  if (colors && colors.length > 0) {
+    filter.color = { $all: colors };
+  }
+
+  if (size) {
+    filter.size = { $eq: size };
+  }
+
+  if (price && price.length > 0) {
+    filter["$and"] = [
+      {
+        price: { $lte: price[1] },
+      },
+      {
+        price: {
+          $gte: price[0],
+        },
+      },
+    ];
+  }
+
+  try {
+    const subProducts = await SubProductModel.find(filter);
+
+    if (categories) {
+    } else {
+    }
+
+    const productIds: string[] = [];
+    const products: any = [];
+    if (subProducts.length > 0) {
+      subProducts.forEach(
+        (item) =>
+          !productIds.includes(item.productId) &&
+          productIds.push(item.productId)
+      );
+
+      productIds.forEach(async (id) => {
+        const product: any = await ProductModel.findById(id);
+        const children = subProducts.filter(
+          (element) => element.productId === id
+        );
+        const items = { ...product._doc, subItems: children };
+
+        products.push(items);
+
+        if (products.length === productIds.length) {
+          res.status(200).json({
+            data: {
+              items: products,
+              totalItems: products.length,
+            },
+          });
+        }
+      });
+    } else {
+      res.status(200).json({ data: [] });
+    }
+  } catch (error: any) {
+    res.status(404).json({
+      message: error.message,
+    });
+  }
+};
+
 export {
   getProducts,
   addCategory,
@@ -287,4 +451,8 @@ export {
   removeProduct,
   getProductDetail,
   updateProduct,
+  getFilterValues,
+  filterProducts,
+  removeSubProduct,
+  updateSubProduct,
 };
